@@ -92,7 +92,6 @@ async def root() -> HTMLResponse:
 
 @app.get("/health", response_model=None)
 async def health_check() -> dict[str, any]:
-    """Проверка работоспособности API"""
     from datetime import datetime
 
     return {
