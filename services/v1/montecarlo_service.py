@@ -22,7 +22,7 @@ class MonteCarloService(IMonteCarloService):
         )
 
         if WORKERS_CNT == 1:
-            return MonteCarloService.sync_simulate(request)
+            return MonteCarloService._sync_simulate(request)
 
         sims_per_worker = request.simulations // WORKERS_CNT
         remainder = request.simulations % WORKERS_CNT
@@ -160,11 +160,12 @@ class MonteCarloService(IMonteCarloService):
         monthly_rate: float,
         monthly_risk: float,
     ) -> list[float]:
+        rng = np.random.default_rng()
         current_amount = initial
         path: list[float] = [current_amount]
 
         for _ in range(months):
-            random_return = np.random.Generator().normal(monthly_rate, monthly_risk)
+            random_return = rng.normal(monthly_rate, monthly_risk)
 
             current_amount += monthly_contribution
             current_amount *= 1 + random_return

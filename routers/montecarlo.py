@@ -6,6 +6,7 @@ from fastapi import Request
 
 from models.schemas import MonteCarloRequest
 from models.schemas import MonteCarloResponse
+from services.interfaces import IMonteCarloService
 
 
 router = APIRouter()
@@ -27,8 +28,7 @@ async def run_monte_carlo(
     - **goal_amount**: Целевая сумма
     """
     try:
-        return await request.app.state.services.montecarlo_service.simulate(
-            request_body,
-        )
+        montecarlo_service: IMonteCarloService = request.app.state.services.montecarlo_service
+        return await montecarlo_service.simulate(request_body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

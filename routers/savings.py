@@ -6,6 +6,7 @@ from fastapi import Request
 
 from models.schemas import SavingsRequest
 from models.schemas import SavingsResponse
+from services.interfaces import IFinancialCalculator
 
 
 router = APIRouter()
@@ -27,6 +28,7 @@ async def calculate_savings(
     - **inflation**: Ожидаемая инфляция
     """
     try:
-        return request.app.state.services.fin_calc.calculate_savings(request_body)
+        fin_calc: IFinancialCalculator = request.app.state.services.fin_calc
+        return fin_calc.calculate_savings(request_body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
