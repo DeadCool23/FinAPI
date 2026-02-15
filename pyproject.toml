@@ -1,0 +1,74 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+exclude = [
+    "config/*", "data/*", "reports/*", "schedule_params/*"
+]
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "A",    # flake8-builtins
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "ERA",  # flake8-eradicate/eradicate
+    "RET",  # flake8-return
+    "SIM",  # flake8-simplify
+    "TID",  # flake8-tidy-imports
+    "ANN",  # flake8-annotations
+    "PIE",  # flake8-pie
+    "PLR",  # Pylint
+    "I",    # isort
+    "N",    # pep8-naming
+    "E",    # black
+    "PGH",  # pygrep
+    "RUF",  # ruff checks
+    "F",    # enable pyflakes
+    "UP",   # pyupgrade
+    "C901"  # cyclomatic complexity limit
+]
+
+ignore = [
+    "B904",   # just ignore use 'raise ... from err'
+    "B905",   # just ingore use explicit 'strict=' parameter with 'zip()'
+    "N818",   # just ignore Exception name should be named with an Error suffix
+    "UP035",  # just ignore use typing instead collections.abc
+    "A005", # just ignore shadows a Python standard-library module
+    "RUF001",   # just ignore ambiguous-unicode-character-string
+    "RUF002",   # just ignore ambiguous-unicode-character-docstring
+    "RUF006", # just ignore store a reference to the return value of `asyncio.create_task`
+    "ANN204", # allow no annotation in result of __init__ and other magic methods
+    "ANN401", # allow Any to build composite types and pass *args, **kwargs
+    "PLR0904", # allowed to use any number of public methods
+    "PLR0914" # allowed to use any number of local variables
+]
+unfixable = [
+    "ERA", # do not autoremove commented out code
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+force-single-line = true
+lines-between-types = 1
+lines-after-imports = 2
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.pylint]
+# check defaults in https://docs.astral.sh/ruff/settings/#lintpylint
+max-args = 10
+max-returns = 10
+max-branches = 25
+max-statements = 75
+max-nested-blocks = 10
+
+[tool.ruff.lint.flake8-type-checking]
+exempt-modules = ["typing", "typing_extensions"]
+
+[tool.ruff.format]
+exclude = ["*.pyi"]
+
+[tool.ruff.lint.mccabe]
+# check defaults in https://docs.astral.sh/ruff/settings/#lint_mccabe_max-complexity
+max-complexity = 20
