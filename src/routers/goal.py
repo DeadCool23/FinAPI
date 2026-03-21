@@ -13,10 +13,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=GoalResponse)
-async def calculate_goal(
-        request_body: GoalRequest,
-        request: Request
-    ) -> GoalResponse | HTTPException:
+async def calculate_goal(request_body: GoalRequest, request: Request) -> GoalResponse | HTTPException:
     """Расчет необходимых взносов для достижения цели
 
     - **goal_amount**: Целевая сумма

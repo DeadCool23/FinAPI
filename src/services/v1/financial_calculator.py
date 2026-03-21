@@ -2,20 +2,24 @@ from __future__ import annotations
 
 from models.enums import CapitalizationType
 from models.enums import PaymentType
+from models.schemas import CreditMonthPayment
 from models.schemas import CreditRequest
 from models.schemas import CreditResponse
+from models.schemas import GoalMonth
 from models.schemas import GoalRequest
 from models.schemas import GoalResponse
+from models.schemas import MortgageMonthPayment
 from models.schemas import MortgageRequest
 from models.schemas import MortgageResponse
 from models.schemas import SavingsRequest
 from models.schemas import SavingsResponse
+from models.schemas import SavingsYear
 from services.interfaces import IFinancialCalculator
 
 
 class FinancialCalculator(IFinancialCalculator):
     @staticmethod
-    def calculate_mortgage(request: MortgageRequest) -> MortgageRequest:
+    def calculate_mortgage(request: MortgageRequest) -> MortgageResponse:
         loan_amount = request.price - request.down_payment
         monthly_rate = FinancialCalculator._calculate_monthly_rate(request.rate)
         months = FinancialCalculator._years_to_months(request.years)
@@ -57,7 +61,9 @@ class FinancialCalculator(IFinancialCalculator):
             request.capitalization,
         )
 
-        if request.capitalization != CapitalizationType.NONE:
+        if request.rate == 0:
+            final_amount = request.initial + request.monthly * months
+        elif request.capitalization != CapitalizationType.NONE:
             final_amount = FinancialCalculator._calculate_compound_savings(
                 request=request,
                 annual_rate=annual_rate,
@@ -107,6 +113,25 @@ class FinancialCalculator(IFinancialCalculator):
 
     @staticmethod
     def calculate_credit(request: CreditRequest) -> CreditResponse:
+        if request.rate == 0:
+            months = int(FinancialCalculator._years_to_months(request.years))
+            commission_amount = FinancialCalculator._calculate_commission_amount(
+                amount=request.amount,
+                commission_rate=request.commission,
+            )
+            monthly_payment = request.amount / months
+            total_payment = request.amount + commission_amount
+
+            return CreditResponse(
+                monthly_payment=round(monthly_payment, 2),
+                total_payment=round(total_payment, 2),
+                total_interest=0,
+                effective_rate=request.commission + request.insurance,
+                commission_amount=round(commission_amount, 2),
+                total_insurance=0,
+                payment_schedule=[],
+            )
+
         monthly_rate = FinancialCalculator._calculate_monthly_rate(request.rate)
         months = int(FinancialCalculator._years_to_months(request.years))
 
@@ -179,14 +204,41 @@ class FinancialCalculator(IFinancialCalculator):
         )
         months = FinancialCalculator._years_to_months(request.years)
 
-        if request.monthly_contribution is None:
-            required_monthly = (
-                FinancialCalculator._calculate_required_monthly_contribution(
-                    goal_amount=request.goal_amount,
+        if request.expected_rate == 0:
+            if request.monthly_contribution is None:
+                required_monthly = (request.goal_amount - request.current_savings) / months
+                monthly_breakdown = FinancialCalculator._generate_goal_monthly_breakdown(
                     current_savings=request.current_savings,
-                    annual_rate=annual_rate,
+                    monthly_contribution=required_monthly,
+                    annual_rate=0,
                     months=months,
                 )
+                return GoalResponse(
+                    required_monthly=round(required_monthly, 2),
+                    expected_final_amount=None,
+                    monthly_breakdown=monthly_breakdown,
+                    is_achievable=required_monthly >= 0,
+                )
+            future_value = request.current_savings + request.monthly_contribution * months
+            monthly_breakdown = FinancialCalculator._generate_goal_monthly_breakdown(
+                current_savings=request.current_savings,
+                monthly_contribution=request.monthly_contribution,
+                annual_rate=0,
+                months=months,
+            )
+            return GoalResponse(
+                required_monthly=None,
+                expected_final_amount=round(future_value, 2),
+                monthly_breakdown=monthly_breakdown,
+                is_achievable=future_value >= request.goal_amount,
+            )
+
+        if request.monthly_contribution is None:
+            required_monthly = FinancialCalculator._calculate_required_monthly_contribution(
+                goal_amount=request.goal_amount,
+                current_savings=request.current_savings,
+                annual_rate=annual_rate,
+                months=months,
             )
             monthly_breakdown = FinancialCalculator._generate_goal_monthly_breakdown(
                 current_savings=request.current_savings,
@@ -194,11 +246,12 @@ class FinancialCalculator(IFinancialCalculator):
                 annual_rate=annual_rate,
                 months=months,
             )
-            return {
-                "required_monthly": round(required_monthly, 2),
-                "expected_final_amount": None,
-                "monthly_breakdown": monthly_breakdown,
-            }
+            return GoalResponse(
+                required_monthly=round(required_monthly, 2),
+                expected_final_amount=None,
+                monthly_breakdown=monthly_breakdown,
+                is_achievable=required_monthly >= 0,
+            )
 
         future_value = FinancialCalculator._calculate_expected_final_amount(
             current_savings=request.current_savings,
@@ -216,6 +269,7 @@ class FinancialCalculator(IFinancialCalculator):
             required_monthly=None,
             expected_final_amount=round(future_value, 2),
             monthly_breakdown=monthly_breakdown,
+            is_achievable=future_value >= request.goal_amount,
         )
 
     @staticmethod
@@ -241,11 +295,11 @@ class FinancialCalculator(IFinancialCalculator):
         months: int,
         payment_type: PaymentType,
     ) -> float:
+        if monthly_rate == 0:
+            return loan_amount / months if months > 0 else 0
+
         if payment_type == PaymentType.ANNUITY:
-            return loan_amount * (
-                (monthly_rate * (1 + monthly_rate) ** months)
-                / ((1 + monthly_rate) ** months - 1)
-            )
+            return loan_amount * ((monthly_rate * (1 + monthly_rate) ** months) / ((1 + monthly_rate) ** months - 1))
 
         principal_part = loan_amount / months
         return principal_part + (loan_amount * monthly_rate)
@@ -257,8 +311,8 @@ class FinancialCalculator(IFinancialCalculator):
         months: int,
         payment_type: PaymentType,
         initial_monthly_payment: float,
-    ) -> list[dict]:
-        schedule: list[dict] = []
+    ) -> list[MortgageMonthPayment]:
+        schedule: list[MortgageMonthPayment] = []
         balance = loan_amount
         monthly_payment = initial_monthly_payment
 
@@ -274,13 +328,13 @@ class FinancialCalculator(IFinancialCalculator):
             balance -= principal
 
             schedule.append(
-                {
-                    "month": month,
-                    "payment": round(monthly_payment, 2),
-                    "principal": round(principal, 2),
-                    "interest": round(interest, 2),
-                    "balance": round(max(balance, 0), 2),
-                },
+                MortgageMonthPayment(
+                    month=month,
+                    payment=round(monthly_payment, 2),
+                    principal=round(principal, 2),
+                    interest=round(interest, 2),
+                    balance=round(max(balance, 0), 2),
+                )
             )
 
         return schedule
@@ -320,9 +374,7 @@ class FinancialCalculator(IFinancialCalculator):
         future_value_annuity = 0.0
         if payment_per_period > 0:
             future_value_annuity = (
-                payment_per_period
-                * ((1 + rate_per_period) ** periods_for_payments - 1)
-                / rate_per_period
+                payment_per_period * ((1 + rate_per_period) ** periods_for_payments - 1) / rate_per_period
             )
 
         return future_value_initial + future_value_annuity
@@ -335,12 +387,7 @@ class FinancialCalculator(IFinancialCalculator):
     ) -> float:
         total_interest = request.initial * annual_rate * request.years
         monthly_interest = request.monthly * annual_rate * request.years / 2
-        return (
-            request.initial
-            + request.monthly * months
-            + total_interest
-            + monthly_interest
-        )
+        return request.initial + request.monthly * months + total_interest + monthly_interest
 
     @staticmethod
     def _calculate_total_contributions(
@@ -379,24 +426,27 @@ class FinancialCalculator(IFinancialCalculator):
     def _generate_yearly_savings_breakdown(
         request: SavingsRequest,
         annual_rate: float,
-    ) -> list[dict]:
-        yearly_breakdown: list[dict] = []
+    ) -> list[SavingsYear]:
+        yearly_breakdown: list[SavingsYear] = []
         current_amount = request.initial
 
         for year in range(1, request.years + 1):
             yearly_contributions = request.monthly * 12
-            yearly_interest = (
-                current_amount * annual_rate + yearly_contributions * annual_rate / 2
-            )
+
+            if annual_rate == 0:
+                yearly_interest = 0
+            else:
+                yearly_interest = current_amount * annual_rate + yearly_contributions * annual_rate / 2
+
             current_amount += yearly_contributions + yearly_interest
 
             yearly_breakdown.append(
-                {
-                    "year": year,
-                    "amount": round(current_amount, 2),
-                    "contributions": round(yearly_contributions, 2),
-                    "interest": round(yearly_interest, 2),
-                },
+                SavingsYear(
+                    year=year,
+                    amount=round(current_amount, 2),
+                    contributions=round(yearly_contributions, 2),
+                    interest=round(yearly_interest, 2),
+                )
             )
 
         return yearly_breakdown
@@ -419,10 +469,12 @@ class FinancialCalculator(IFinancialCalculator):
         months: int,
         payment_type: PaymentType,
     ) -> float:
+        if monthly_rate == 0:
+            return effective_amount / months if months > 0 else 0
+
         if payment_type == PaymentType.ANNUITY:
             return effective_amount * (
-                (monthly_rate * (1 + monthly_rate) ** months)
-                / ((1 + monthly_rate) ** months - 1)
+                (monthly_rate * (1 + monthly_rate) ** months) / ((1 + monthly_rate) ** months - 1)
             )
 
         principal_part = effective_amount / months
@@ -467,8 +519,8 @@ class FinancialCalculator(IFinancialCalculator):
         monthly_payment: float,
         monthly_insurance: float,
         commission_amount: float,
-    ) -> list[dict]:
-        schedule: list[dict] = []
+    ) -> list[CreditMonthPayment]:
+        schedule: list[CreditMonthPayment] = []
         balance = effective_amount
 
         for month in range(1, months + 1):
@@ -490,14 +542,14 @@ class FinancialCalculator(IFinancialCalculator):
             total_payment = base_payment + fees
 
             schedule.append(
-                {
-                    "month": month,
-                    "payment": round(total_payment, 2),
-                    "principal": round(principal, 2),
-                    "interest": round(interest, 2),
-                    "fees": round(fees, 2),
-                    "balance": round(max(balance, 0), 2),
-                },
+                CreditMonthPayment(
+                    month=month,
+                    payment=round(total_payment, 2),
+                    principal=round(principal, 2),
+                    interest=round(interest, 2),
+                    fees=round(fees, 2),
+                    balance=round(max(balance, 0), 2),
+                )
             )
 
         return schedule
@@ -517,9 +569,7 @@ class FinancialCalculator(IFinancialCalculator):
             fv_factor = (1 + monthly_rate) ** months
             annuity_factor = (fv_factor - 1) / monthly_rate
 
-            required_monthly = (
-                future_value - present_value * fv_factor
-            ) / annuity_factor
+            required_monthly = (future_value - present_value * fv_factor) / annuity_factor
             return max(required_monthly, 0.0)
 
         return (future_value - present_value) / months
@@ -543,26 +593,26 @@ class FinancialCalculator(IFinancialCalculator):
         monthly_contribution: float,
         annual_rate: float,
         months: int,
-    ) -> list[dict]:
-        monthly_rate = annual_rate / 12
+    ) -> list[GoalMonth]:
+        monthly_rate = annual_rate / 12 if annual_rate > 0 else 0
         balance = current_savings
         total_contributions = 0.0
-        breakdown: list[dict] = []
+        breakdown: list[GoalMonth] = []
 
         for month in range(1, months + 1):
             balance += monthly_contribution
             total_contributions += monthly_contribution
 
-            interest = balance * monthly_rate
+            interest = balance * monthly_rate if monthly_rate > 0 else 0
             balance += interest
 
             breakdown.append(
-                {
-                    "month": month,
-                    "amount": round(balance, 2),
-                    "contributions": round(total_contributions, 2),
-                    "interest": round(interest, 2),
-                },
+                GoalMonth(
+                    month=month,
+                    amount=round(balance, 2),
+                    contributions=round(total_contributions, 2),
+                    interest=round(interest, 2),
+                )
             )
 
         return breakdown

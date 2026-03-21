@@ -13,10 +13,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=SavingsResponse)
-async def calculate_savings(
-        request_body: SavingsRequest,
-        request: Request
-    ) -> SavingsResponse | HTTPException:
+async def calculate_savings(request_body: SavingsRequest, request: Request) -> SavingsResponse | HTTPException:
     """Расчет накоплений со сложным процентом
 
     - **initial**: Начальная сумма

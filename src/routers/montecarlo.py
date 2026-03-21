@@ -13,10 +13,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=MonteCarloResponse)
-async def run_monte_carlo(
-        request_body: MonteCarloRequest,
-        request: Request
-    ) -> MonteCarloResponse | HTTPException:
+async def run_monte_carlo(request_body: MonteCarloRequest, request: Request) -> MonteCarloResponse | HTTPException:
     """Симуляция Монте-Карло для инвестиций
 
     - **initial**: Начальный капитал

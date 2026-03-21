@@ -284,18 +284,20 @@ class GoalMonth(BaseModel):
 
 
 class GoalResponse(BaseModel):
-    """Ответ с результатами расчета цели"""
+    """Ответ с результатами расчета финансовой цели"""
 
     required_monthly: float | None = Field(
-        default=None,
-        description="Необходимый ежемесячный взнос в рублях",
+        description="Необходимый ежемесячный взнос для достижения цели",
     )
     expected_final_amount: float | None = Field(
-        default=None,
-        description="Ожидаемая конечная сумма в рублях",
+        description="Ожидаемая итоговая сумма при заданном взносе",
     )
     monthly_breakdown: list[GoalMonth] = Field(
-        description="Помесячный план накоплений",
+        description="Помесячный график накоплений",
+    )
+    is_achievable: bool = Field(
+        default=True,
+        description="Достижима ли цель при заданных параметрах",
     )
 
 
@@ -377,8 +379,8 @@ class CompareRequest(BaseModel):
         description="Тип сравнения",
     )
     scenarios: list[ComparisonScenario] = Field(
-        min_items=2,
-        max_items=10,
+        min_length=2,
+        max_length=10,
         description="Сценарии сравнения сравнения",
     )
 

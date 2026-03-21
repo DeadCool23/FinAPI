@@ -215,9 +215,7 @@ class MonteCarloService(IMonteCarloService):
         }
 
         if request.goal_amount:
-            probabilities["reach_goal"] = (
-                float(np.mean(final_array >= request.goal_amount)) * 100
-            )
+            probabilities["reach_goal"] = float(np.mean(final_array >= request.goal_amount)) * 100
 
         return probabilities
 

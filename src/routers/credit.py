@@ -13,10 +13,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=CreditResponse)
-async def calculate_credit(
-        request_body: CreditRequest,
-        request: Request
-    ) -> CreditRequest | HTTPException:
+async def calculate_credit(request_body: CreditRequest, request: Request) -> CreditRequest | HTTPException:
     """Расчет потребительского кредита
 
     - **amount**: Сумма кредита

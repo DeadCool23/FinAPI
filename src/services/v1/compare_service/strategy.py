@@ -71,7 +71,7 @@ class GoalStrategyComparisonStrategy(ComparisonStrategy):
 
     def calculate(self, request_data: GoalRequest) -> GoalResponse:
         return self.calculator.calculate_goal(request_data)
-    
+
     @staticmethod
     def recommendation(calculation_results: list[dict[str, Any]]) -> dict[str, Any]:
         sample = calculation_results[0]["data"]

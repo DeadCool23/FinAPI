@@ -13,10 +13,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=CompareResponse)
-async def compare_financial_products(
-        request_body: CompareRequest,
-        request: Request
-    ) -> CompareResponse | HTTPException:
+async def compare_financial_products(request_body: CompareRequest, request: Request) -> CompareResponse | HTTPException:
     try:
         cmp_service: ICompareService = request.app.state.services.cmp_service
         return cmp_service.comparison(request_body)

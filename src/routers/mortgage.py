@@ -13,10 +13,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=MortgageResponse)
-async def calculate_mortgage(
-        request_body: MortgageRequest,
-        request: Request
-    ) -> MortgageResponse | HTTPException:
+async def calculate_mortgage(request_body: MortgageRequest, request: Request) -> MortgageResponse | HTTPException:
     """Расчет ипотечного кредита
 
     - **price**: Стоимость недвижимости

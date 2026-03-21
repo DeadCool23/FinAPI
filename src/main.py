@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import argparse
+
 from types import SimpleNamespace
+
+import uvicorn
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -98,3 +102,12 @@ async def health_check() -> dict[str, any]:
         "status": "healthy",
         "timestamp": datetime.now().astimezone(),
     }
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="FinSimulator API Server")
+    parser.add_argument("--port", "-p", type=int, default=9887, help="Port of the API server")
+    parser.add_argument("--host", "-H", type=str, default="0.0.0.0", help="Host of the API server")
+
+    args = parser.parse_args()
+    uvicorn.run(app, host=args.host, port=args.port)

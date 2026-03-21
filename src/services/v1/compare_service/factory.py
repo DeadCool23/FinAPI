@@ -15,11 +15,7 @@ class ComparisonStrategyFactory:
     _strategies: ClassVar[dict[ComparisonType, ComparisonStrategy]] = {}
 
     @classmethod
-    def register(
-        cls,
-        comparison_type: ComparisonType,
-        strategy: ComparisonStrategy
-    ) -> ComparisonStrategy:
+    def register(cls, comparison_type: ComparisonType, strategy: ComparisonStrategy) -> ComparisonStrategy:
         cls._strategies[comparison_type] = strategy
 
     @classmethod
